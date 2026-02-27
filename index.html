@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rubber Band Clock</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
   html, body {
     width: 100%; height: 100%;
     background: #22252c;
@@ -229,11 +229,11 @@ function drawRubberBand(pins) {
     Math.min(...xs), Math.min(...ys),
     Math.max(...xs), Math.max(...ys)
   );
-  grad.addColorStop(0,    '#8a6010');
-  grad.addColorStop(0.25, '#d4a022');
-  grad.addColorStop(0.5,  '#c49018');
-  grad.addColorStop(0.75, '#e8b828');
-  grad.addColorStop(1,    '#9a7014');
+  grad.addColorStop(0,    '#7a3a08');
+  grad.addColorStop(0.25, '#c45e10');
+  grad.addColorStop(0.5,  '#b84e0c');
+  grad.addColorStop(0.75, '#d4660e');
+  grad.addColorStop(1,    '#8a3a08');
 
   ctx.save();
 
@@ -246,7 +246,7 @@ function drawRubberBand(pins) {
   ctx.lineJoin = 'round'; ctx.stroke();
 
   buildBandPath(pins);
-  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,235,150,0.28)';
+  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,180,120,0.18)';
   ctx.stroke();
 
   ctx.restore();
