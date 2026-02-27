@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -44,289 +45,299 @@ const LIGHT_OY =  6;
 // ─── Time ────────────────────────────────────────────────────────────────────
 
 function getAngles() {
-  const now  = new Date();
-  const oslo = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Oslo' }));
-  const hours   = oslo.getHours() % 12;
-  const minutes = oslo.getMinutes();
-  const seconds = oslo.getSeconds();
-  const ms      = oslo.getMilliseconds();
-  const totalSeconds = hours * 3600 + minutes * 60 + seconds + ms / 1000;
-  const totalMinutes = minutes + seconds / 60 + ms / 60000;
-  return {
-    outerAngle: (totalMinutes / 60)    * Math.PI * 2,
-    innerAngle: (totalSeconds / 43200) * Math.PI * 2,
-  };
+const now  = new Date();
+const oslo = new Date(now.toLocaleString(‘en-US’, { timeZone: ‘Europe/Oslo’ }));
+const hours   = oslo.getHours() % 12;
+const minutes = oslo.getMinutes();
+const seconds = oslo.getSeconds();
+const ms      = oslo.getMilliseconds();
+const totalSeconds = hours * 3600 + minutes * 60 + seconds + ms / 1000;
+const totalMinutes = minutes + seconds / 60 + ms / 60000;
+return {
+outerAngle: (totalMinutes / 60)    * Math.PI * 2,
+innerAngle: (totalSeconds / 43200) * Math.PI * 2,
+};
 }
 
 // ─── Background ───────────────────────────────────────────────────────────────
 
 function drawBackground() {
-  ctx.fillStyle = '#22252c';
-  ctx.fillRect(0, 0, W, H);
+ctx.fillStyle = ‘#22252c’;
+ctx.fillRect(0, 0, W, H);
 
-  const vig = ctx.createRadialGradient(cx, cy, H * 0.15, cx, cy, H * 0.82);
-  vig.addColorStop(0, 'rgba(0,0,0,0)');
-  vig.addColorStop(1, 'rgba(0,0,0,0.5)');
-  ctx.fillStyle = vig;
-  ctx.fillRect(0, 0, W, H);
+const vig = ctx.createRadialGradient(cx, cy, H * 0.15, cx, cy, H * 0.82);
+vig.addColorStop(0, ‘rgba(0,0,0,0)’);
+vig.addColorStop(1, ‘rgba(0,0,0,0.5)’);
+ctx.fillStyle = vig;
+ctx.fillRect(0, 0, W, H);
 }
 
 // ─── Cast shadow ──────────────────────────────────────────────────────────────
 
 function drawCastShadow(x, y, r, elevation) {
-  const ox = elevation * 0.5, oy = elevation * 0.85;
-  const spread = r + elevation * 1.2;
-  const sg = ctx.createRadialGradient(x+ox, y+oy, r*0.2, x+ox, y+oy, spread);
-  sg.addColorStop(0,   'rgba(0,0,0,0.6)');
-  sg.addColorStop(0.4, 'rgba(0,0,0,0.25)');
-  sg.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.beginPath();
-  ctx.arc(x+ox, y+oy, spread, 0, Math.PI*2);
-  ctx.fillStyle = sg;
-  ctx.fill();
+const ox = elevation * 0.5, oy = elevation * 0.85;
+const spread = r + elevation * 1.2;
+const sg = ctx.createRadialGradient(x+ox, y+oy, r*0.2, x+ox, y+oy, spread);
+sg.addColorStop(0,   ‘rgba(0,0,0,0.6)’);
+sg.addColorStop(0.4, ‘rgba(0,0,0,0.25)’);
+sg.addColorStop(1,   ‘rgba(0,0,0,0)’);
+ctx.beginPath();
+ctx.arc(x+ox, y+oy, spread, 0, Math.PI*2);
+ctx.fillStyle = sg;
+ctx.fill();
 }
 
 // ─── Disc ─────────────────────────────────────────────────────────────────────
 
 function drawDisc(x, y, r, elevation) {
-  drawCastShadow(x, y, r, elevation);
+drawCastShadow(x, y, r, elevation);
 
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI*2);
-  ctx.clip();
+ctx.save();
+ctx.beginPath();
+ctx.arc(x, y, r, 0, Math.PI*2);
+ctx.clip();
 
-  // Base fill — offset light source upper-left, matte falloff
-  const base = ctx.createRadialGradient(
-    x - r*0.45, y - r*0.45, r*0.05,
-    x + r*0.1,  y + r*0.1,  r*1.4
-  );
-  base.addColorStop(0,   '#3e434d');
-  base.addColorStop(0.4, '#2e3238');
-  base.addColorStop(1,   '#181b20');
-  ctx.fillStyle = base;
-  ctx.fillRect(x-r, y-r, r*2, r*2);
+// Base fill — offset light source upper-left, matte falloff
+const base = ctx.createRadialGradient(
+x - r*0.45, y - r*0.45, r*0.05,
+x + r*0.1,  y + r*0.1,  r*1.4
+);
+base.addColorStop(0,   ‘#3e434d’);
+base.addColorStop(0.4, ‘#2e3238’);
+base.addColorStop(1,   ‘#181b20’);
+ctx.fillStyle = base;
+ctx.fillRect(x-r, y-r, r*2, r*2);
 
-  // Edge darkening
-  const edgeDark = ctx.createRadialGradient(x, y, r*0.7, x, y, r);
-  edgeDark.addColorStop(0, 'rgba(0,0,0,0)');
-  edgeDark.addColorStop(1, 'rgba(0,0,0,0.5)');
-  ctx.fillStyle = edgeDark;
-  ctx.fillRect(x-r, y-r, r*2, r*2);
+// Edge darkening
+const edgeDark = ctx.createRadialGradient(x, y, r*0.7, x, y, r);
+edgeDark.addColorStop(0, ‘rgba(0,0,0,0)’);
+edgeDark.addColorStop(1, ‘rgba(0,0,0,0.5)’);
+ctx.fillStyle = edgeDark;
+ctx.fillRect(x-r, y-r, r*2, r*2);
 
-  ctx.restore();
+ctx.restore();
 
-  // Soft dark halo at edge
-  const halo = ctx.createRadialGradient(x, y, r-6, x, y, r+4);
-  halo.addColorStop(0,   'rgba(0,0,0,0)');
-  halo.addColorStop(0.6, 'rgba(0,0,0,0.35)');
-  halo.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.beginPath();
-  ctx.arc(x, y, r+4, 0, Math.PI*2);
-  ctx.fillStyle = halo;
-  ctx.fill();
+// Soft dark halo at edge
+const halo = ctx.createRadialGradient(x, y, r-6, x, y, r+4);
+halo.addColorStop(0,   ‘rgba(0,0,0,0)’);
+halo.addColorStop(0.6, ‘rgba(0,0,0,0.35)’);
+halo.addColorStop(1,   ‘rgba(0,0,0,0)’);
+ctx.beginPath();
+ctx.arc(x, y, r+4, 0, Math.PI*2);
+ctx.fillStyle = halo;
+ctx.fill();
 }
 
 // ─── Inner disc shadow on outer ───────────────────────────────────────────────
 
 function drawInnerOnOuterShadow() {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2, false);
-  ctx.arc(cx, cy, INNER_R, 0, Math.PI*2, true);
-  ctx.clip();
-  const sg = ctx.createRadialGradient(cx+6, cy+10, INNER_R*0.7, cx+6, cy+10, INNER_R+30);
-  sg.addColorStop(0,   'rgba(0,0,0,0)');
-  sg.addColorStop(0.6, 'rgba(0,0,0,0.22)');
-  sg.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.fillStyle = sg;
-  ctx.beginPath();
-  ctx.arc(cx+6, cy+10, INNER_R+30, 0, Math.PI*2);
-  ctx.fill();
-  ctx.restore();
+ctx.save();
+ctx.beginPath();
+ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2, false);
+ctx.arc(cx, cy, INNER_R, 0, Math.PI*2, true);
+ctx.clip();
+const sg = ctx.createRadialGradient(cx+6, cy+10, INNER_R*0.7, cx+6, cy+10, INNER_R+30);
+sg.addColorStop(0,   ‘rgba(0,0,0,0)’);
+sg.addColorStop(0.6, ‘rgba(0,0,0,0.22)’);
+sg.addColorStop(1,   ‘rgba(0,0,0,0)’);
+ctx.fillStyle = sg;
+ctx.beginPath();
+ctx.arc(cx+6, cy+10, INNER_R+30, 0, Math.PI*2);
+ctx.fill();
+ctx.restore();
 }
 
 // ─── Axle ─────────────────────────────────────────────────────────────────────
 
 function drawAxle() {
-  const r = 22;
-  drawCastShadow(cx, cy, r, 8);
-  const g = ctx.createRadialGradient(cx-r*0.35, cy-r*0.35, 1, cx, cy, r);
-  g.addColorStop(0,   '#4a4e58');
-  g.addColorStop(0.6, '#2a2d35');
-  g.addColorStop(1,   '#14161a');
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI*2);
-  ctx.fillStyle = g;
-  ctx.fill();
-  const halo = ctx.createRadialGradient(cx, cy, r-4, cx, cy, r+3);
-  halo.addColorStop(0, 'rgba(0,0,0,0)');
-  halo.addColorStop(1, 'rgba(0,0,0,0.4)');
-  ctx.beginPath();
-  ctx.arc(cx, cy, r+3, 0, Math.PI*2);
-  ctx.fillStyle = halo;
-  ctx.fill();
+const r = 22;
+drawCastShadow(cx, cy, r, 8);
+const g = ctx.createRadialGradient(cx-r*0.35, cy-r*0.35, 1, cx, cy, r);
+g.addColorStop(0,   ‘#4a4e58’);
+g.addColorStop(0.6, ‘#2a2d35’);
+g.addColorStop(1,   ‘#14161a’);
+ctx.beginPath();
+ctx.arc(cx, cy, r, 0, Math.PI*2);
+ctx.fillStyle = g;
+ctx.fill();
+const halo = ctx.createRadialGradient(cx, cy, r-4, cx, cy, r+3);
+halo.addColorStop(0, ‘rgba(0,0,0,0)’);
+halo.addColorStop(1, ‘rgba(0,0,0,0.4)’);
+ctx.beginPath();
+ctx.arc(cx, cy, r+3, 0, Math.PI*2);
+ctx.fillStyle = halo;
+ctx.fill();
 }
 
 // ─── Rubber band path ─────────────────────────────────────────────────────────
 
 function buildBandPath(pins, offsetX, offsetY) {
-  const ox = offsetX || 0, oy = offsetY || 0;
-  const n = pins.length;
-  const r = pins[0].r;
+const ox = offsetX || 0, oy = offsetY || 0;
+const n = pins.length;
+const r = pins[0].r;
 
-  let gcx = 0, gcy = 0;
-  for (const p of pins) { gcx += p.x; gcy += p.y; }
-  gcx /= n; gcy /= n;
+let gcx = 0, gcy = 0;
+for (const p of pins) { gcx += p.x; gcy += p.y; }
+gcx /= n; gcy /= n;
 
-  const sorted = [...pins].sort((a, b) =>
-    Math.atan2(a.y - gcy, a.x - gcx) - Math.atan2(b.y - gcy, b.x - gcx)
-  );
+const sorted = […pins].sort((a, b) =>
+Math.atan2(a.y - gcy, a.x - gcx) - Math.atan2(b.y - gcy, b.x - gcx)
+);
 
-  const dep = [], arr = [];
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    const pi = sorted[i], pj = sorted[j];
-    const dx = pj.x - pi.x, dy = pj.y - pi.y;
-    const len = Math.sqrt(dx*dx + dy*dy);
-    if (len < 0.001) {
-      dep[i] = { x: pi.x+ox, y: pi.y+oy };
-      arr[i] = { x: pj.x+ox, y: pj.y+oy };
-      continue;
-    }
-    const nx = dy/len, ny = -dx/len;
-    dep[i] = { x: pi.x + r*nx + ox, y: pi.y + r*ny + oy };
-    arr[i] = { x: pj.x + r*nx + ox, y: pj.y + r*ny + oy };
-  }
+const dep = [], arr = [];
+for (let i = 0; i < n; i++) {
+const j = (i + 1) % n;
+const pi = sorted[i], pj = sorted[j];
+const dx = pj.x - pi.x, dy = pj.y - pi.y;
+const len = Math.sqrt(dx*dx + dy*dy);
+if (len < 0.001) {
+dep[i] = { x: pi.x+ox, y: pi.y+oy };
+arr[i] = { x: pj.x+ox, y: pj.y+oy };
+continue;
+}
+const nx = dy/len, ny = -dx/len;
+dep[i] = { x: pi.x + r*nx + ox, y: pi.y + r*ny + oy };
+arr[i] = { x: pj.x + r*nx + ox, y: pj.y + r*ny + oy };
+}
 
-  ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    const prev  = (i - 1 + n) % n;
-    const pin   = sorted[i];
-    const arrPt = arr[prev];
-    const depPt = dep[i];
-    const sa = Math.atan2(arrPt.y - (pin.y+oy), arrPt.x - (pin.x+ox));
-    const ea = Math.atan2(depPt.y - (pin.y+oy), depPt.x - (pin.x+ox));
-    if (i === 0) ctx.moveTo(arrPt.x, arrPt.y);
-    ctx.arc(pin.x+ox, pin.y+oy, r, sa, ea, false);
-    ctx.lineTo(arr[i].x, arr[i].y);
-  }
-  ctx.closePath();
+ctx.beginPath();
+for (let i = 0; i < n; i++) {
+const prev  = (i - 1 + n) % n;
+const pin   = sorted[i];
+const arrPt = arr[prev];
+const depPt = dep[i];
+const sa = Math.atan2(arrPt.y - (pin.y+oy), arrPt.x - (pin.x+ox));
+const ea = Math.atan2(depPt.y - (pin.y+oy), depPt.x - (pin.x+ox));
+if (i === 0) ctx.moveTo(arrPt.x, arrPt.y);
+ctx.arc(pin.x+ox, pin.y+oy, r, sa, ea, false);
+ctx.lineTo(arr[i].x, arr[i].y);
+}
+ctx.closePath();
 }
 
 function drawBandShadow(pins) {
-  ctx.save();
-  // Clip to annular region only — no inner disc contamination
-  ctx.beginPath();
-  ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2, false);
-  ctx.arc(cx, cy, INNER_R, 0, Math.PI*2, true);
-  ctx.clip();
+ctx.save();
+// Clip to annular region only — no inner disc contamination
+ctx.beginPath();
+ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2, false);
+ctx.arc(cx, cy, INNER_R, 0, Math.PI*2, true);
+ctx.clip();
 
-  buildBandPath(pins, LIGHT_OX*2.5, LIGHT_OY*2.5);
-  ctx.lineWidth = 22; ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+buildBandPath(pins, LIGHT_OX*2.5, LIGHT_OY*2.5);
+ctx.lineWidth = 22; ctx.strokeStyle = ‘rgba(0,0,0,0.12)’;
+ctx.lineJoin = ‘round’; ctx.lineCap = ‘round’; ctx.stroke();
 
-  buildBandPath(pins, LIGHT_OX*1.8, LIGHT_OY*1.8);
-  ctx.lineWidth = 13; ctx.strokeStyle = 'rgba(0,0,0,0.20)';
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+buildBandPath(pins, LIGHT_OX*1.8, LIGHT_OY*1.8);
+ctx.lineWidth = 13; ctx.strokeStyle = ‘rgba(0,0,0,0.20)’;
+ctx.lineJoin = ‘round’; ctx.lineCap = ‘round’; ctx.stroke();
 
-  buildBandPath(pins, LIGHT_OX, LIGHT_OY);
-  ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(0,0,0,0.22)';
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+buildBandPath(pins, LIGHT_OX, LIGHT_OY);
+ctx.lineWidth = 7; ctx.strokeStyle = ‘rgba(0,0,0,0.22)’;
+ctx.lineJoin = ‘round’; ctx.lineCap = ‘round’; ctx.stroke();
 
-  ctx.restore();
+ctx.restore();
 }
 
 function drawRubberBand(pins) {
-  const xs = pins.map(p => p.x), ys = pins.map(p => p.y);
-  const grad = ctx.createLinearGradient(
-    Math.min(...xs), Math.min(...ys),
-    Math.max(...xs), Math.max(...ys)
-  );
-  grad.addColorStop(0,    '#8a6010');
-  grad.addColorStop(0.25, '#d4a022');
-  grad.addColorStop(0.5,  '#c49018');
-  grad.addColorStop(0.75, '#e8b828');
-  grad.addColorStop(1,    '#9a7014');
+const xs = pins.map(p => p.x), ys = pins.map(p => p.y);
+const grad = ctx.createLinearGradient(
+Math.min(…xs), Math.min(…ys),
+Math.max(…xs), Math.max(…ys)
+);
+grad.addColorStop(0,    ‘#8a6010’);
+grad.addColorStop(0.25, ‘#d4a022’);
+grad.addColorStop(0.5,  ‘#c49018’);
+grad.addColorStop(0.75, ‘#e8b828’);
+grad.addColorStop(1,    ‘#9a7014’);
 
-  ctx.save();
+ctx.save();
 
-  buildBandPath(pins);
-  ctx.lineWidth = 15; ctx.strokeStyle = 'rgba(0,0,0,0.30)';
-  ctx.lineJoin = 'round'; ctx.stroke();
+buildBandPath(pins);
+ctx.lineWidth = 15; ctx.strokeStyle = ‘rgba(0,0,0,0.30)’;
+ctx.lineJoin = ‘round’; ctx.stroke();
 
-  buildBandPath(pins);
-  ctx.lineWidth = 9; ctx.strokeStyle = grad;
-  ctx.lineJoin = 'round'; ctx.stroke();
+buildBandPath(pins);
+ctx.lineWidth = 9; ctx.strokeStyle = grad;
+ctx.lineJoin = ‘round’; ctx.stroke();
 
-  buildBandPath(pins);
-  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,235,150,0.28)';
-  ctx.stroke();
+buildBandPath(pins);
+ctx.lineWidth = 2; ctx.strokeStyle = ‘rgba(255,235,150,0.28)’;
+ctx.stroke();
 
-  ctx.restore();
+ctx.restore();
 }
 
 function drawPin(x, y, r) {
-  drawCastShadow(x, y, r, 10);
+drawCastShadow(x, y, r, 10);
 
-  const g = ctx.createRadialGradient(x-r*0.38, y-r*0.4, r*0.04, x+r*0.1, y+r*0.1, r*1.1);
-  g.addColorStop(0,   '#e8c84a');
-  g.addColorStop(0.5, '#b88a18');
-  g.addColorStop(1,   '#5a3c06');
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI*2);
-  ctx.fillStyle = g;
-  ctx.fill();
+const g = ctx.createRadialGradient(x-r*0.38, y-r*0.4, r*0.04, x+r*0.1, y+r*0.1, r*1.1);
+g.addColorStop(0,   ‘#e8c84a’);
+g.addColorStop(0.5, ‘#b88a18’);
+g.addColorStop(1,   ‘#5a3c06’);
+ctx.beginPath();
+ctx.arc(x, y, r, 0, Math.PI*2);
+ctx.fillStyle = g;
+ctx.fill();
 
-  const edge = ctx.createRadialGradient(x, y, r*0.6, x, y, r);
-  edge.addColorStop(0, 'rgba(0,0,0,0)');
-  edge.addColorStop(1, 'rgba(0,0,0,0.4)');
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI*2);
-  ctx.fillStyle = edge;
-  ctx.fill();
+const edge = ctx.createRadialGradient(x, y, r*0.6, x, y, r);
+edge.addColorStop(0, ‘rgba(0,0,0,0)’);
+edge.addColorStop(1, ‘rgba(0,0,0,0.4)’);
+ctx.beginPath();
+ctx.arc(x, y, r, 0, Math.PI*2);
+ctx.fillStyle = edge;
+ctx.fill();
 
-  ctx.beginPath();
-  ctx.arc(x-r*0.28, y-r*0.3, r*0.32, 0, Math.PI*2);
-  ctx.fillStyle = 'rgba(255,245,190,0.35)';
-  ctx.fill();
+ctx.beginPath();
+ctx.arc(x-r*0.28, y-r*0.3, r*0.32, 0, Math.PI*2);
+ctx.fillStyle = ‘rgba(255,245,190,0.35)’;
+ctx.fill();
 }
 
 // ─── Render loop ──────────────────────────────────────────────────────────────
+// Throttled to 30fps — smooth for a clock, avoids tearing on TV displays
 
-function draw() {
-  ctx.clearRect(0, 0, W, H);
+const TARGET_FPS = 30;
+const FRAME_MS   = 1000 / TARGET_FPS;
+let lastFrame = 0;
 
-  const { outerAngle, innerAngle } = getAngles();
+function draw(timestamp) {
+requestAnimationFrame(draw);
 
-  drawBackground();
-  drawDisc(cx, cy, OUTER_R, 14);
-  drawInnerOnOuterShadow();
-  drawDisc(cx, cy, INNER_R, 22);
-  drawAxle();
+// Skip frame if not enough time has passed
+if (timestamp - lastFrame < FRAME_MS) return;
+lastFrame = timestamp;
 
-  const pins = [
-    { x: cx, y: cy, r: PIN_R },
-    {
-      x: cx + Math.cos(START_ANGLE + innerAngle) * (INNER_R * 0.65),
-      y: cy + Math.sin(START_ANGLE + innerAngle) * (INNER_R * 0.65),
-      r: PIN_R
-    },
-    {
-      x: cx + Math.cos(START_ANGLE + outerAngle) * (OUTER_R * 0.72),
-      y: cy + Math.sin(START_ANGLE + outerAngle) * (OUTER_R * 0.72),
-      r: PIN_R
-    }
-  ];
+ctx.clearRect(0, 0, W, H);
 
-  drawBandShadow(pins);
-  drawRubberBand(pins);
-  pins.forEach(p => drawPin(p.x, p.y, p.r));
+const { outerAngle, innerAngle } = getAngles();
 
-  requestAnimationFrame(draw);
+drawBackground();
+drawDisc(cx, cy, OUTER_R, 14);
+drawInnerOnOuterShadow();
+drawDisc(cx, cy, INNER_R, 22);
+drawAxle();
+
+const pins = [
+{ x: cx, y: cy, r: PIN_R },
+{
+x: cx + Math.cos(START_ANGLE + innerAngle) * (INNER_R * 0.65),
+y: cy + Math.sin(START_ANGLE + innerAngle) * (INNER_R * 0.65),
+r: PIN_R
+},
+{
+x: cx + Math.cos(START_ANGLE + outerAngle) * (OUTER_R * 0.72),
+y: cy + Math.sin(START_ANGLE + outerAngle) * (OUTER_R * 0.72),
+r: PIN_R
+}
+];
+
+drawBandShadow(pins);
+drawRubberBand(pins);
+pins.forEach(p => drawPin(p.x, p.y, p.r));
 }
 
 requestAnimationFrame(draw);
 </script>
+
 </body>
 </html>
