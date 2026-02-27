@@ -299,8 +299,10 @@ function buildBandPath(pins, offsetX, offsetY) {
 
 function drawBandShadow(pins) {
   ctx.save();
+  // Clip to annular region only — shadow falls on outer disc but never inner disc
   ctx.beginPath();
-  ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2);
+  ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2, false);
+  ctx.arc(cx, cy, INNER_R, 0, Math.PI*2, true); // punch hole
   ctx.clip();
 
   buildBandPath(pins, LIGHT_OX * 2.5, LIGHT_OY * 2.5);
@@ -417,10 +419,6 @@ function draw() {
   ];
 
   drawBandShadow(pins);
-
-  // Redraw inner disc so band shadow only falls on outer disc
-  drawDisc(cx, cy, INNER_R, 22, innerPattern);
-  drawAxle();
 
   drawRubberBand(pins);
   pins.forEach(p => drawPin(p.x, p.y, p.r));
