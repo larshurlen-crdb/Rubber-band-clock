@@ -34,17 +34,14 @@ canvas.width = W;
 canvas.height = H;
 
 const cx = W / 2, cy = H / 2;
-const OUTER_R  = 390;
-const INNER_R  = 240;
-const PIN_R    = 18;
+const OUTER_R = 390;
+const INNER_R = 240;
+const PIN_R   = 18;
 const START_ANGLE = -Math.PI / 2;
-
 const LIGHT_OX = -4;
 const LIGHT_OY =  6;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TIME
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Time ────────────────────────────────────────────────────────────────────
 
 function getAngles() {
   const now  = new Date();
@@ -61,99 +58,20 @@ function getAngles() {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TEXTURES — small tiles (256×256) repeated as patterns
-// No large ImageData pixel loops — Safari-safe
-// ─────────────────────────────────────────────────────────────────────────────
-
-function mulberry32(seed) {
-  return function() {
-    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-
-function buildFiberTile(sz, seed, warmth) {
-  const rand = mulberry32(seed);
-  const oc = document.createElement('canvas');
-  oc.width = sz; oc.height = sz;
-  const oc2 = oc.getContext('2d');
-
-  // Base color
-  oc2.fillStyle = `hsl(${26 + warmth}, ${5 + warmth * 0.3}%, ${17 + warmth * 0.4}%)`;
-  oc2.fillRect(0, 0, sz, sz);
-
-  // Warm/cool blobs
-  for (let i = 0; i < 8; i++) {
-    const bx = rand() * sz, by = rand() * sz;
-    const br = sz * (0.2 + rand() * 0.4);
-    const bg = oc2.createRadialGradient(bx, by, 0, bx, by, br);
-    const a  = 0.04 + rand() * 0.06;
-    bg.addColorStop(0, rand() > 0.5 ? `rgba(180,140,80,${a})` : `rgba(60,80,110,${a * 0.6})`);
-    bg.addColorStop(1, 'rgba(0,0,0,0)');
-    oc2.fillStyle = bg;
-    oc2.fillRect(0, 0, sz, sz);
-  }
-
-  // Fiber strokes
-  const baseAngle = 0.26;
-  for (let i = 0; i < 700; i++) {
-    const x = rand() * sz, y = rand() * sz;
-    const len = 4 + rand() * 18;
-    const angle = baseAngle + (rand() - 0.5) * 0.5;
-    const a = 0.04 + rand() * 0.1;
-    oc2.beginPath();
-    oc2.moveTo(x, y);
-    oc2.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
-    oc2.strokeStyle = rand() > 0.6
-      ? `rgba(220,200,170,${a})`
-      : `rgba(0,0,0,${a * 1.4})`;
-    oc2.lineWidth = 0.5 + rand() * 0.8;
-    oc2.stroke();
-  }
-
-  // Cross fibers
-  for (let i = 0; i < 200; i++) {
-    const x = rand() * sz, y = rand() * sz;
-    const len = 3 + rand() * 10;
-    const angle = baseAngle + Math.PI / 2 + (rand() - 0.5) * 0.4;
-    oc2.beginPath();
-    oc2.moveTo(x, y);
-    oc2.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
-    oc2.strokeStyle = `rgba(180,160,130,${0.02 + rand() * 0.04})`;
-    oc2.lineWidth = 0.4 + rand() * 0.5;
-    oc2.stroke();
-  }
-
-  return oc;
-}
-
-// Build all tiles at 256×256 — tiled via createPattern
-const TILE = 256;
-const outerTile   = buildFiberTile(TILE, 1234, 2);
-const innerTile   = buildFiberTile(TILE, 5678, 5);
-const panelTile   = buildFiberTile(TILE, 9999, 0);
-
-const outerPattern = ctx.createPattern(outerTile, 'repeat');
-const innerPattern = ctx.createPattern(innerTile, 'repeat');
-const panelPattern = ctx.createPattern(panelTile, 'repeat');
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DRAWING
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Background ───────────────────────────────────────────────────────────────
 
 function drawBackground() {
-  ctx.fillStyle = panelPattern;
+  ctx.fillStyle = '#22252c';
   ctx.fillRect(0, 0, W, H);
 
   const vig = ctx.createRadialGradient(cx, cy, H * 0.15, cx, cy, H * 0.82);
   vig.addColorStop(0, 'rgba(0,0,0,0)');
-  vig.addColorStop(1, 'rgba(0,0,0,0.52)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.5)');
   ctx.fillStyle = vig;
   ctx.fillRect(0, 0, W, H);
 }
+
+// ─── Cast shadow ──────────────────────────────────────────────────────────────
 
 function drawCastShadow(x, y, r, elevation) {
   const ox = elevation * 0.5, oy = elevation * 0.85;
@@ -168,7 +86,9 @@ function drawCastShadow(x, y, r, elevation) {
   ctx.fill();
 }
 
-function drawDisc(x, y, r, elevation, pattern) {
+// ─── Disc ─────────────────────────────────────────────────────────────────────
+
+function drawDisc(x, y, r, elevation) {
   drawCastShadow(x, y, r, elevation);
 
   ctx.save();
@@ -176,31 +96,27 @@ function drawDisc(x, y, r, elevation, pattern) {
   ctx.arc(x, y, r, 0, Math.PI*2);
   ctx.clip();
 
-  // Tile the fiber pattern
-  ctx.fillStyle = pattern;
-  ctx.fillRect(x - r, y - r, r*2, r*2);
-
-  // Soft matte lighting — warm lift upper-left, shadow lower-right
-  const litGrad = ctx.createRadialGradient(
-    x - r*0.4, y - r*0.45, 0,
-    x + r*0.1, y + r*0.1,  r*1.5
+  // Base fill — offset light source upper-left, matte falloff
+  const base = ctx.createRadialGradient(
+    x - r*0.45, y - r*0.45, r*0.05,
+    x + r*0.1,  y + r*0.1,  r*1.4
   );
-  litGrad.addColorStop(0,   'rgba(255,240,210,0.10)');
-  litGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
-  litGrad.addColorStop(1,   'rgba(0,0,0,0.28)');
-  ctx.fillStyle = litGrad;
+  base.addColorStop(0,   '#3e434d');
+  base.addColorStop(0.4, '#2e3238');
+  base.addColorStop(1,   '#181b20');
+  ctx.fillStyle = base;
   ctx.fillRect(x-r, y-r, r*2, r*2);
 
-  // Edge darkening — no crisp rim
-  const edgeDark = ctx.createRadialGradient(x, y, r*0.72, x, y, r);
+  // Edge darkening
+  const edgeDark = ctx.createRadialGradient(x, y, r*0.7, x, y, r);
   edgeDark.addColorStop(0, 'rgba(0,0,0,0)');
-  edgeDark.addColorStop(1, 'rgba(0,0,0,0.45)');
+  edgeDark.addColorStop(1, 'rgba(0,0,0,0.5)');
   ctx.fillStyle = edgeDark;
   ctx.fillRect(x-r, y-r, r*2, r*2);
 
   ctx.restore();
 
-  // Soft dark halo at edge — no bright rim line
+  // Soft dark halo at edge
   const halo = ctx.createRadialGradient(x, y, r-6, x, y, r+4);
   halo.addColorStop(0,   'rgba(0,0,0,0)');
   halo.addColorStop(0.6, 'rgba(0,0,0,0.35)');
@@ -210,6 +126,8 @@ function drawDisc(x, y, r, elevation, pattern) {
   ctx.fillStyle = halo;
   ctx.fill();
 }
+
+// ─── Inner disc shadow on outer ───────────────────────────────────────────────
 
 function drawInnerOnOuterShadow() {
   ctx.save();
@@ -228,18 +146,19 @@ function drawInnerOnOuterShadow() {
   ctx.restore();
 }
 
+// ─── Axle ─────────────────────────────────────────────────────────────────────
+
 function drawAxle() {
   const r = 22;
   drawCastShadow(cx, cy, r, 8);
-  ctx.save();
+  const g = ctx.createRadialGradient(cx-r*0.35, cy-r*0.35, 1, cx, cy, r);
+  g.addColorStop(0,   '#4a4e58');
+  g.addColorStop(0.6, '#2a2d35');
+  g.addColorStop(1,   '#14161a');
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI*2);
-  ctx.clip();
-  ctx.fillStyle = innerPattern;
-  ctx.fillRect(cx-r, cy-r, r*2, r*2);
-  ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.fillRect(cx-r, cy-r, r*2, r*2);
-  ctx.restore();
+  ctx.fillStyle = g;
+  ctx.fill();
   const halo = ctx.createRadialGradient(cx, cy, r-4, cx, cy, r+3);
   halo.addColorStop(0, 'rgba(0,0,0,0)');
   halo.addColorStop(1, 'rgba(0,0,0,0.4)');
@@ -249,9 +168,7 @@ function drawAxle() {
   ctx.fill();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RUBBER BAND
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Rubber band path ─────────────────────────────────────────────────────────
 
 function buildBandPath(pins, offsetX, offsetY) {
   const ox = offsetX || 0, oy = offsetY || 0;
@@ -273,8 +190,8 @@ function buildBandPath(pins, offsetX, offsetY) {
     const dx = pj.x - pi.x, dy = pj.y - pi.y;
     const len = Math.sqrt(dx*dx + dy*dy);
     if (len < 0.001) {
-      dep[i] = { x: pi.x + ox, y: pi.y + oy };
-      arr[i] = { x: pj.x + ox, y: pj.y + oy };
+      dep[i] = { x: pi.x+ox, y: pi.y+oy };
+      arr[i] = { x: pj.x+ox, y: pj.y+oy };
       continue;
     }
     const nx = dy/len, ny = -dx/len;
@@ -299,29 +216,23 @@ function buildBandPath(pins, offsetX, offsetY) {
 
 function drawBandShadow(pins) {
   ctx.save();
-  // Clip to annular region only — shadow falls on outer disc but never inner disc
+  // Clip to annular region only — no inner disc contamination
   ctx.beginPath();
   ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2, false);
-  ctx.arc(cx, cy, INNER_R, 0, Math.PI*2, true); // punch hole
+  ctx.arc(cx, cy, INNER_R, 0, Math.PI*2, true);
   ctx.clip();
 
-  buildBandPath(pins, LIGHT_OX * 2.5, LIGHT_OY * 2.5);
-  ctx.lineWidth = 22;
-  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.stroke();
+  buildBandPath(pins, LIGHT_OX*2.5, LIGHT_OY*2.5);
+  ctx.lineWidth = 22; ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
 
-  buildBandPath(pins, LIGHT_OX * 1.8, LIGHT_OY * 1.8);
-  ctx.lineWidth = 13;
-  ctx.strokeStyle = 'rgba(0,0,0,0.20)';
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.stroke();
+  buildBandPath(pins, LIGHT_OX*1.8, LIGHT_OY*1.8);
+  ctx.lineWidth = 13; ctx.strokeStyle = 'rgba(0,0,0,0.20)';
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
 
   buildBandPath(pins, LIGHT_OX, LIGHT_OY);
-  ctx.lineWidth = 7;
-  ctx.strokeStyle = 'rgba(0,0,0,0.22)';
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.stroke();
+  ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
 
   ctx.restore();
 }
@@ -341,23 +252,15 @@ function drawRubberBand(pins) {
   ctx.save();
 
   buildBandPath(pins);
-  ctx.lineWidth = 15;
-  ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+  ctx.lineWidth = 15; ctx.strokeStyle = 'rgba(0,0,0,0.30)';
   ctx.lineJoin = 'round'; ctx.stroke();
 
   buildBandPath(pins);
-  ctx.lineWidth = 9;
-  ctx.strokeStyle = grad;
+  ctx.lineWidth = 9; ctx.strokeStyle = grad;
   ctx.lineJoin = 'round'; ctx.stroke();
 
   buildBandPath(pins);
-  ctx.lineWidth = 9;
-  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-  ctx.lineJoin = 'round'; ctx.stroke();
-
-  buildBandPath(pins);
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = 'rgba(255,235,150,0.28)';
+  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,235,150,0.28)';
   ctx.stroke();
 
   ctx.restore();
@@ -389,9 +292,7 @@ function drawPin(x, y, r) {
   ctx.fill();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RENDER LOOP
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Render loop ──────────────────────────────────────────────────────────────
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
@@ -399,9 +300,9 @@ function draw() {
   const { outerAngle, innerAngle } = getAngles();
 
   drawBackground();
-  drawDisc(cx, cy, OUTER_R, 14, outerPattern);
+  drawDisc(cx, cy, OUTER_R, 14);
   drawInnerOnOuterShadow();
-  drawDisc(cx, cy, INNER_R, 22, innerPattern);
+  drawDisc(cx, cy, INNER_R, 22);
   drawAxle();
 
   const pins = [
@@ -419,7 +320,6 @@ function draw() {
   ];
 
   drawBandShadow(pins);
-
   drawRubberBand(pins);
   pins.forEach(p => drawPin(p.x, p.y, p.r));
 
