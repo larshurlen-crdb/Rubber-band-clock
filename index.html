@@ -1,6 +1,4 @@
-
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -39,461 +37,398 @@ const cx = W / 2, cy = H / 2;
 const OUTER_R  = 390;
 const INNER_R  = 240;
 const PIN_R    = 18;
-const START_ANGLE = -Math.PI / 2; // 12 o’clock = straight up in canvas
+const START_ANGLE = -Math.PI / 2;
 
-// Light direction — upper left
-const LIGHT_OX = -4;  // shadow offset X (negative = light from left)
-const LIGHT_OY =  6;  // shadow offset Y (positive = light from above)
+const LIGHT_OX = -4;
+const LIGHT_OY =  6;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIME
+// ─────────────────────────────────────────────────────────────────────────────
 
 function getAngles() {
-// Current time in Norway (Europe/Oslo — handles CET/CEST automatically)
-const now = new Date();
-const oslo = new Date(now.toLocaleString(‘en-US’, { timeZone: ‘Europe/Oslo’ }));
-
-const hours   = oslo.getHours() % 12;
-const minutes = oslo.getMinutes();
-const seconds = oslo.getSeconds();
-const ms      = oslo.getMilliseconds();
-
-// Smooth continuous angles — each unit interpolated with finer subdivisions
-// so the hands glide rather than tick
-const totalSeconds = hours * 3600 + minutes * 60 + seconds + ms / 1000;
-const totalMinutes = minutes + seconds / 60 + ms / 60000;
-
-return {
-// Outer disc = minutes: full rotation in 60 minutes
-outerAngle: (totalMinutes / 60) * Math.PI * 2,
-// Inner disc = hours: full rotation in 12 hours
-innerAngle: (totalSeconds / 43200) * Math.PI * 2,
-};
+  const now  = new Date();
+  const oslo = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Oslo' }));
+  const hours   = oslo.getHours() % 12;
+  const minutes = oslo.getMinutes();
+  const seconds = oslo.getSeconds();
+  const ms      = oslo.getMilliseconds();
+  const totalSeconds = hours * 3600 + minutes * 60 + seconds + ms / 1000;
+  const totalMinutes = minutes + seconds / 60 + ms / 60000;
+  return {
+    outerAngle: (totalMinutes / 60)    * Math.PI * 2,
+    innerAngle: (totalSeconds / 43200) * Math.PI * 2,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TEXTURES — pre-rendered once
+// TEXTURES — small tiles (256×256) repeated as patterns
+// No large ImageData pixel loops — Safari-safe
 // ─────────────────────────────────────────────────────────────────────────────
 
 function mulberry32(seed) {
-return function() {
-seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-return ((t ^ t >>> 14) >>> 0) / 4294967296;
-};
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
 }
 
-function buildCardboardTexture(r, seed, warmth) {
-const rand = mulberry32(seed);
-const sz = r * 2;
-const oc = document.createElement(‘canvas’);
-oc.width = sz; oc.height = sz;
-const oc2 = oc.getContext(‘2d’);
+function buildFiberTile(sz, seed, warmth) {
+  const rand = mulberry32(seed);
+  const oc = document.createElement('canvas');
+  oc.width = sz; oc.height = sz;
+  const oc2 = oc.getContext('2d');
 
-oc2.fillStyle = `hsl(${28 + warmth},${6 + warmth * 0.3}%,${17 + warmth * 0.5}%)`;
-oc2.fillRect(0, 0, sz, sz);
+  // Base color
+  oc2.fillStyle = `hsl(${26 + warmth}, ${5 + warmth * 0.3}%, ${17 + warmth * 0.4}%)`;
+  oc2.fillRect(0, 0, sz, sz);
 
-for (let i = 0; i < 18; i++) {
-const bx = rand() * sz, by = rand() * sz;
-const br = sz * (0.15 + rand() * 0.35);
-const warm = rand() > 0.5;
-const bg = oc2.createRadialGradient(bx, by, 0, bx, by, br);
-const alpha = 0.04 + rand() * 0.06;
-bg.addColorStop(0, warm ? `rgba(180,140,80,${alpha})` : `rgba(60,80,110,${alpha * 0.6})`);
-bg.addColorStop(1, ‘rgba(0,0,0,0)’);
-oc2.fillStyle = bg;
-oc2.fillRect(0, 0, sz, sz);
+  // Warm/cool blobs
+  for (let i = 0; i < 8; i++) {
+    const bx = rand() * sz, by = rand() * sz;
+    const br = sz * (0.2 + rand() * 0.4);
+    const bg = oc2.createRadialGradient(bx, by, 0, bx, by, br);
+    const a  = 0.04 + rand() * 0.06;
+    bg.addColorStop(0, rand() > 0.5 ? `rgba(180,140,80,${a})` : `rgba(60,80,110,${a * 0.6})`);
+    bg.addColorStop(1, 'rgba(0,0,0,0)');
+    oc2.fillStyle = bg;
+    oc2.fillRect(0, 0, sz, sz);
+  }
+
+  // Fiber strokes
+  const baseAngle = 0.26;
+  for (let i = 0; i < 700; i++) {
+    const x = rand() * sz, y = rand() * sz;
+    const len = 4 + rand() * 18;
+    const angle = baseAngle + (rand() - 0.5) * 0.5;
+    const a = 0.04 + rand() * 0.1;
+    oc2.beginPath();
+    oc2.moveTo(x, y);
+    oc2.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
+    oc2.strokeStyle = rand() > 0.6
+      ? `rgba(220,200,170,${a})`
+      : `rgba(0,0,0,${a * 1.4})`;
+    oc2.lineWidth = 0.5 + rand() * 0.8;
+    oc2.stroke();
+  }
+
+  // Cross fibers
+  for (let i = 0; i < 200; i++) {
+    const x = rand() * sz, y = rand() * sz;
+    const len = 3 + rand() * 10;
+    const angle = baseAngle + Math.PI / 2 + (rand() - 0.5) * 0.4;
+    oc2.beginPath();
+    oc2.moveTo(x, y);
+    oc2.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
+    oc2.strokeStyle = `rgba(180,160,130,${0.02 + rand() * 0.04})`;
+    oc2.lineWidth = 0.4 + rand() * 0.5;
+    oc2.stroke();
+  }
+
+  return oc;
 }
 
-const baseAngle = 0.26;
-for (let i = 0; i < 2200; i++) {
-const x = rand() * sz, y = rand() * sz;
-const len = 4 + rand() * 18;
-const angle = baseAngle + (rand() - 0.5) * 0.5;
-const alpha = 0.04 + rand() * 0.1;
-oc2.beginPath();
-oc2.moveTo(x, y);
-oc2.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
-oc2.strokeStyle = rand() > 0.6
-? `rgba(220,200,170,${alpha})`
-: `rgba(0,0,0,${alpha * 1.4})`;
-oc2.lineWidth = 0.5 + rand() * 0.8;
-oc2.stroke();
-}
+// Build all tiles at 256×256 — tiled via createPattern
+const TILE = 256;
+const outerTile   = buildFiberTile(TILE, 1234, 2);
+const innerTile   = buildFiberTile(TILE, 5678, 5);
+const panelTile   = buildFiberTile(TILE, 9999, 0);
 
-for (let i = 0; i < 600; i++) {
-const x = rand() * sz, y = rand() * sz;
-const len = 3 + rand() * 10;
-const angle = baseAngle + Math.PI / 2 + (rand() - 0.5) * 0.4;
-oc2.beginPath();
-oc2.moveTo(x, y);
-oc2.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
-oc2.strokeStyle = `rgba(180,160,130,${0.02 + rand() * 0.05})`;
-oc2.lineWidth = 0.4 + rand() * 0.5;
-oc2.stroke();
-}
-
-const id = oc2.createImageData(sz, sz);
-for (let i = 0; i < id.data.length; i += 4) {
-const g = (rand() * 2 - 1) * 22;
-id.data[i] = 128 + g; id.data[i+1] = 128 + g; id.data[i+2] = 128 + g; id.data[i+3] = 12;
-}
-oc2.putImageData(id, 0, 0);
-return oc;
-}
-
-function buildPanelTexture(w, h) {
-const rand = mulberry32(9999);
-const oc = document.createElement(‘canvas’);
-oc.width = w; oc.height = h;
-const oc2 = oc.getContext(‘2d’);
-
-oc2.fillStyle = ‘hsl(25,5%,15%)’;
-oc2.fillRect(0, 0, w, h);
-
-for (let i = 0; i < 12; i++) {
-const bx = rand() * w, by = rand() * h;
-const br = w * (0.2 + rand() * 0.4);
-const bg = oc2.createRadialGradient(bx, by, 0, bx, by, br);
-bg.addColorStop(0, `rgba(140,110,70,${0.03 + rand() * 0.04})`);
-bg.addColorStop(1, ‘rgba(0,0,0,0)’);
-oc2.fillStyle = bg;
-oc2.fillRect(0, 0, w, h);
-}
-
-for (let i = 0; i < 3500; i++) {
-const x = rand() * w, y = rand() * h;
-const len = 5 + rand() * 25;
-const angle = 0.18 + (rand() - 0.5) * 0.6;
-oc2.beginPath();
-oc2.moveTo(x, y);
-oc2.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
-const bright = rand() > 0.55;
-oc2.strokeStyle = bright
-? `rgba(200,180,150,${0.025 + rand() * 0.05})`
-: `rgba(0,0,0,${0.03 + rand() * 0.06})`;
-oc2.lineWidth = 0.4 + rand() * 0.7;
-oc2.stroke();
-}
-
-const id = oc2.createImageData(w, h);
-for (let i = 0; i < id.data.length; i += 4) {
-const g = (rand() * 2 - 1) * 18;
-id.data[i] = 128+g; id.data[i+1] = 128+g; id.data[i+2] = 128+g; id.data[i+3] = 10;
-}
-oc2.putImageData(id, 0, 0);
-return oc;
-}
-
-const outerTexture = buildCardboardTexture(OUTER_R, 1234, 2);
-const innerTexture = buildCardboardTexture(INNER_R, 5678, 5);
-const panelTexture = buildPanelTexture(W, H);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// RUBBER BAND PATH BUILDER
-// ─────────────────────────────────────────────────────────────────────────────
-
-function buildBandPath(pins, offsetX, offsetY) {
-const ox = offsetX || 0, oy = offsetY || 0;
-const n = pins.length;
-const r = pins[0].r;
-
-let gcx = 0, gcy = 0;
-for (const p of pins) { gcx += p.x; gcy += p.y; }
-gcx /= n; gcy /= n;
-
-const sorted = […pins].sort((a, b) =>
-Math.atan2(a.y - gcy, a.x - gcx) - Math.atan2(b.y - gcy, b.x - gcx)
-);
-
-const dep = [], arr = [];
-for (let i = 0; i < n; i++) {
-const j = (i + 1) % n;
-const pi = sorted[i], pj = sorted[j];
-const dx = pj.x - pi.x, dy = pj.y - pi.y;
-const len = Math.sqrt(dx*dx + dy*dy);
-if (len < 0.001) {
-dep[i] = { x: pi.x + ox, y: pi.y + oy };
-arr[i] = { x: pj.x + ox, y: pj.y + oy };
-continue;
-}
-const nx = dy/len, ny = -dx/len;
-dep[i] = { x: pi.x + r*nx + ox, y: pi.y + r*ny + oy };
-arr[i] = { x: pj.x + r*nx + ox, y: pj.y + r*ny + oy };
-}
-
-ctx.beginPath();
-for (let i = 0; i < n; i++) {
-const prev  = (i - 1 + n) % n;
-const pin   = sorted[i];
-const arrPt = arr[prev];
-const depPt = dep[i];
-const sa = Math.atan2(arrPt.y - (pin.y + oy), arrPt.x - (pin.x + ox));
-const ea = Math.atan2(depPt.y - (pin.y + oy), depPt.x - (pin.x + ox));
-if (i === 0) ctx.moveTo(arrPt.x, arrPt.y);
-ctx.arc(pin.x + ox, pin.y + oy, r, sa, ea, false);
-ctx.lineTo(arr[i].x, arr[i].y);
-}
-ctx.closePath();
-}
+const outerPattern = ctx.createPattern(outerTile, 'repeat');
+const innerPattern = ctx.createPattern(innerTile, 'repeat');
+const panelPattern = ctx.createPattern(panelTile, 'repeat');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DRAWING
 // ─────────────────────────────────────────────────────────────────────────────
 
 function drawBackground() {
-ctx.drawImage(panelTexture, 0, 0, W, H);
-const vig = ctx.createRadialGradient(cx, cy, H*0.15, cx, cy, H*0.82);
-vig.addColorStop(0, ‘rgba(0,0,0,0)’);
-vig.addColorStop(1, ‘rgba(0,0,0,0.5)’);
-ctx.fillStyle = vig;
-ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = panelPattern;
+  ctx.fillRect(0, 0, W, H);
+
+  const vig = ctx.createRadialGradient(cx, cy, H * 0.15, cx, cy, H * 0.82);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.52)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
 }
 
 function drawCastShadow(x, y, r, elevation) {
-const ox = elevation * 0.5, oy = elevation * 0.85;
-const spread = r + elevation * 1.2;
-const sg = ctx.createRadialGradient(x+ox, y+oy, r*0.2, x+ox, y+oy, spread);
-sg.addColorStop(0,   ‘rgba(0,0,0,0.6)’);
-sg.addColorStop(0.4, ‘rgba(0,0,0,0.25)’);
-sg.addColorStop(1,   ‘rgba(0,0,0,0)’);
-ctx.beginPath();
-ctx.arc(x+ox, y+oy, spread, 0, Math.PI*2);
-ctx.fillStyle = sg;
-ctx.fill();
+  const ox = elevation * 0.5, oy = elevation * 0.85;
+  const spread = r + elevation * 1.2;
+  const sg = ctx.createRadialGradient(x+ox, y+oy, r*0.2, x+ox, y+oy, spread);
+  sg.addColorStop(0,   'rgba(0,0,0,0.6)');
+  sg.addColorStop(0.4, 'rgba(0,0,0,0.25)');
+  sg.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.beginPath();
+  ctx.arc(x+ox, y+oy, spread, 0, Math.PI*2);
+  ctx.fillStyle = sg;
+  ctx.fill();
 }
 
-function drawDisc(x, y, r, elevation, texture) {
-drawCastShadow(x, y, r, elevation);
+function drawDisc(x, y, r, elevation, pattern) {
+  drawCastShadow(x, y, r, elevation);
 
-ctx.save();
-ctx.beginPath();
-ctx.arc(x, y, r, 0, Math.PI*2);
-ctx.clip();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.clip();
 
-ctx.drawImage(texture, x - r, y - r, r*2, r*2);
+  // Tile the fiber pattern
+  ctx.fillStyle = pattern;
+  ctx.fillRect(x - r, y - r, r*2, r*2);
 
-const litGrad = ctx.createRadialGradient(
-x - r*0.4, y - r*0.45, 0,
-x + r*0.1, y + r*0.1,  r*1.5
-);
-litGrad.addColorStop(0,   ‘rgba(255,240,210,0.10)’);
-litGrad.addColorStop(0.5, ‘rgba(0,0,0,0)’);
-litGrad.addColorStop(1,   ‘rgba(0,0,0,0.28)’);
-ctx.fillStyle = litGrad;
-ctx.fillRect(x-r, y-r, r*2, r*2);
+  // Soft matte lighting — warm lift upper-left, shadow lower-right
+  const litGrad = ctx.createRadialGradient(
+    x - r*0.4, y - r*0.45, 0,
+    x + r*0.1, y + r*0.1,  r*1.5
+  );
+  litGrad.addColorStop(0,   'rgba(255,240,210,0.10)');
+  litGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
+  litGrad.addColorStop(1,   'rgba(0,0,0,0.28)');
+  ctx.fillStyle = litGrad;
+  ctx.fillRect(x-r, y-r, r*2, r*2);
 
-const edgeDark = ctx.createRadialGradient(x, y, r*0.72, x, y, r);
-edgeDark.addColorStop(0, ‘rgba(0,0,0,0)’);
-edgeDark.addColorStop(1, ‘rgba(0,0,0,0.45)’);
-ctx.fillStyle = edgeDark;
-ctx.fillRect(x-r, y-r, r*2, r*2);
+  // Edge darkening — no crisp rim
+  const edgeDark = ctx.createRadialGradient(x, y, r*0.72, x, y, r);
+  edgeDark.addColorStop(0, 'rgba(0,0,0,0)');
+  edgeDark.addColorStop(1, 'rgba(0,0,0,0.45)');
+  ctx.fillStyle = edgeDark;
+  ctx.fillRect(x-r, y-r, r*2, r*2);
 
-ctx.restore();
+  ctx.restore();
 
-const halo = ctx.createRadialGradient(x, y, r-6, x, y, r+4);
-halo.addColorStop(0, ‘rgba(0,0,0,0)’);
-halo.addColorStop(0.6,‘rgba(0,0,0,0.35)’);
-halo.addColorStop(1, ‘rgba(0,0,0,0)’);
-ctx.beginPath();
-ctx.arc(x, y, r+4, 0, Math.PI*2);
-ctx.fillStyle = halo;
-ctx.fill();
+  // Soft dark halo at edge — no bright rim line
+  const halo = ctx.createRadialGradient(x, y, r-6, x, y, r+4);
+  halo.addColorStop(0,   'rgba(0,0,0,0)');
+  halo.addColorStop(0.6, 'rgba(0,0,0,0.35)');
+  halo.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.beginPath();
+  ctx.arc(x, y, r+4, 0, Math.PI*2);
+  ctx.fillStyle = halo;
+  ctx.fill();
 }
 
 function drawInnerOnOuterShadow() {
-ctx.save();
-ctx.beginPath();
-ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2, false);
-ctx.arc(cx, cy, INNER_R, 0, Math.PI*2, true);
-ctx.clip();
-const sg = ctx.createRadialGradient(cx+6, cy+10, INNER_R*0.7, cx+6, cy+10, INNER_R+30);
-sg.addColorStop(0,   ‘rgba(0,0,0,0)’);
-sg.addColorStop(0.6, ‘rgba(0,0,0,0.22)’);
-sg.addColorStop(1,   ‘rgba(0,0,0,0)’);
-ctx.fillStyle = sg;
-ctx.beginPath();
-ctx.arc(cx+6, cy+10, INNER_R+30, 0, Math.PI*2);
-ctx.fill();
-ctx.restore();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2, false);
+  ctx.arc(cx, cy, INNER_R, 0, Math.PI*2, true);
+  ctx.clip();
+  const sg = ctx.createRadialGradient(cx+6, cy+10, INNER_R*0.7, cx+6, cy+10, INNER_R+30);
+  sg.addColorStop(0,   'rgba(0,0,0,0)');
+  sg.addColorStop(0.6, 'rgba(0,0,0,0.22)');
+  sg.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = sg;
+  ctx.beginPath();
+  ctx.arc(cx+6, cy+10, INNER_R+30, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawAxle() {
-const r = 22;
-drawCastShadow(cx, cy, r, 8);
-ctx.save();
-ctx.beginPath();
-ctx.arc(cx, cy, r, 0, Math.PI*2);
-ctx.clip();
-ctx.drawImage(innerTexture, INNER_R-r, INNER_R-r, r*2, r*2, cx-r, cy-r, r*2, r*2);
-ctx.fillStyle = ‘rgba(0,0,0,0.55)’;
-ctx.fillRect(cx-r, cy-r, r*2, r*2);
-ctx.restore();
-const halo = ctx.createRadialGradient(cx, cy, r-4, cx, cy, r+3);
-halo.addColorStop(0, ‘rgba(0,0,0,0)’);
-halo.addColorStop(1, ‘rgba(0,0,0,0.4)’);
-ctx.beginPath();
-ctx.arc(cx, cy, r+3, 0, Math.PI*2);
-ctx.fillStyle = halo;
-ctx.fill();
+  const r = 22;
+  drawCastShadow(cx, cy, r, 8);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.clip();
+  ctx.fillStyle = innerPattern;
+  ctx.fillRect(cx-r, cy-r, r*2, r*2);
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(cx-r, cy-r, r*2, r*2);
+  ctx.restore();
+  const halo = ctx.createRadialGradient(cx, cy, r-4, cx, cy, r+3);
+  halo.addColorStop(0, 'rgba(0,0,0,0)');
+  halo.addColorStop(1, 'rgba(0,0,0,0.4)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r+3, 0, Math.PI*2);
+  ctx.fillStyle = halo;
+  ctx.fill();
 }
 
-// Draw the rubber band’s cast shadow onto disc surfaces
-// The band sits on pins which are elevated above the disc,
-// so it casts a soft shadow offset in the light direction.
+// ─────────────────────────────────────────────────────────────────────────────
+// RUBBER BAND
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildBandPath(pins, offsetX, offsetY) {
+  const ox = offsetX || 0, oy = offsetY || 0;
+  const n = pins.length;
+  const r = pins[0].r;
+
+  let gcx = 0, gcy = 0;
+  for (const p of pins) { gcx += p.x; gcy += p.y; }
+  gcx /= n; gcy /= n;
+
+  const sorted = [...pins].sort((a, b) =>
+    Math.atan2(a.y - gcy, a.x - gcx) - Math.atan2(b.y - gcy, b.x - gcx)
+  );
+
+  const dep = [], arr = [];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const pi = sorted[i], pj = sorted[j];
+    const dx = pj.x - pi.x, dy = pj.y - pi.y;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    if (len < 0.001) {
+      dep[i] = { x: pi.x + ox, y: pi.y + oy };
+      arr[i] = { x: pj.x + ox, y: pj.y + oy };
+      continue;
+    }
+    const nx = dy/len, ny = -dx/len;
+    dep[i] = { x: pi.x + r*nx + ox, y: pi.y + r*ny + oy };
+    arr[i] = { x: pj.x + r*nx + ox, y: pj.y + r*ny + oy };
+  }
+
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const prev  = (i - 1 + n) % n;
+    const pin   = sorted[i];
+    const arrPt = arr[prev];
+    const depPt = dep[i];
+    const sa = Math.atan2(arrPt.y - (pin.y+oy), arrPt.x - (pin.x+ox));
+    const ea = Math.atan2(depPt.y - (pin.y+oy), depPt.x - (pin.x+ox));
+    if (i === 0) ctx.moveTo(arrPt.x, arrPt.y);
+    ctx.arc(pin.x+ox, pin.y+oy, r, sa, ea, false);
+    ctx.lineTo(arr[i].x, arr[i].y);
+  }
+  ctx.closePath();
+}
+
 function drawBandShadow(pins) {
-ctx.save();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2);
+  ctx.clip();
 
-// Clip to outer disc so shadow doesn’t bleed onto panel background
-ctx.beginPath();
-ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2);
-ctx.clip();
+  buildBandPath(pins, LIGHT_OX * 2.5, LIGHT_OY * 2.5);
+  ctx.lineWidth = 22;
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.stroke();
 
-// Penumbra — wide, very soft
-buildBandPath(pins, LIGHT_OX * 2.5, LIGHT_OY * 2.5);
-ctx.lineWidth = 22;
-ctx.strokeStyle = ‘rgba(0,0,0,0.12)’;
-ctx.lineJoin = ‘round’;
-ctx.lineCap = ‘round’;
-ctx.stroke();
+  buildBandPath(pins, LIGHT_OX * 1.8, LIGHT_OY * 1.8);
+  ctx.lineWidth = 13;
+  ctx.strokeStyle = 'rgba(0,0,0,0.20)';
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.stroke();
 
-// Umbra — narrower, slightly stronger
-buildBandPath(pins, LIGHT_OX * 1.8, LIGHT_OY * 1.8);
-ctx.lineWidth = 13;
-ctx.strokeStyle = ‘rgba(0,0,0,0.20)’;
-ctx.lineJoin = ‘round’;
-ctx.lineCap = ‘round’;
-ctx.stroke();
+  buildBandPath(pins, LIGHT_OX, LIGHT_OY);
+  ctx.lineWidth = 7;
+  ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.stroke();
 
-// Core shadow — tightest, darkest, closest to band
-buildBandPath(pins, LIGHT_OX, LIGHT_OY);
-ctx.lineWidth = 7;
-ctx.strokeStyle = ‘rgba(0,0,0,0.22)’;
-ctx.lineJoin = ‘round’;
-ctx.lineCap = ‘round’;
-ctx.stroke();
-
-ctx.restore();
+  ctx.restore();
 }
 
 function drawRubberBand(pins) {
-const xs = pins.map(p => p.x), ys = pins.map(p => p.y);
-const grad = ctx.createLinearGradient(
-Math.min(…xs), Math.min(…ys),
-Math.max(…xs), Math.max(…ys)
-);
-grad.addColorStop(0,    ‘#8a6010’);
-grad.addColorStop(0.25, ‘#d4a022’);
-grad.addColorStop(0.5,  ‘#c49018’);
-grad.addColorStop(0.75, ‘#e8b828’);
-grad.addColorStop(1,    ‘#9a7014’);
+  const xs = pins.map(p => p.x), ys = pins.map(p => p.y);
+  const grad = ctx.createLinearGradient(
+    Math.min(...xs), Math.min(...ys),
+    Math.max(...xs), Math.max(...ys)
+  );
+  grad.addColorStop(0,    '#8a6010');
+  grad.addColorStop(0.25, '#d4a022');
+  grad.addColorStop(0.5,  '#c49018');
+  grad.addColorStop(0.75, '#e8b828');
+  grad.addColorStop(1,    '#9a7014');
 
-ctx.save();
+  ctx.save();
 
-// Drop shadow under band itself (contact shadow)
-buildBandPath(pins);
-ctx.lineWidth = 15;
-ctx.strokeStyle = ‘rgba(0,0,0,0.30)’;
-ctx.lineJoin = ‘round’;
-ctx.stroke();
+  buildBandPath(pins);
+  ctx.lineWidth = 15;
+  ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+  ctx.lineJoin = 'round'; ctx.stroke();
 
-// Core band
-buildBandPath(pins);
-ctx.lineWidth = 9;
-ctx.strokeStyle = grad;
-ctx.lineJoin = ‘round’;
-ctx.stroke();
+  buildBandPath(pins);
+  ctx.lineWidth = 9;
+  ctx.strokeStyle = grad;
+  ctx.lineJoin = 'round'; ctx.stroke();
 
-// Matte surface subtlety
-buildBandPath(pins);
-ctx.lineWidth = 9;
-ctx.strokeStyle = ‘rgba(0,0,0,0.12)’;
-ctx.lineJoin = ‘round’;
-ctx.stroke();
+  buildBandPath(pins);
+  ctx.lineWidth = 9;
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineJoin = 'round'; ctx.stroke();
 
-// Soft top highlight
-buildBandPath(pins);
-ctx.lineWidth = 2;
-ctx.strokeStyle = ‘rgba(255,235,150,0.28)’;
-ctx.stroke();
+  buildBandPath(pins);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(255,235,150,0.28)';
+  ctx.stroke();
 
-ctx.restore();
+  ctx.restore();
 }
 
 function drawPin(x, y, r) {
-drawCastShadow(x, y, r, 10);
+  drawCastShadow(x, y, r, 10);
 
-const g = ctx.createRadialGradient(x-r*0.38, y-r*0.4, r*0.04, x+r*0.1, y+r*0.1, r*1.1);
-g.addColorStop(0,   ‘#e8c84a’);
-g.addColorStop(0.5, ‘#b88a18’);
-g.addColorStop(1,   ‘#5a3c06’);
-ctx.beginPath();
-ctx.arc(x, y, r, 0, Math.PI*2);
-ctx.fillStyle = g;
-ctx.fill();
+  const g = ctx.createRadialGradient(x-r*0.38, y-r*0.4, r*0.04, x+r*0.1, y+r*0.1, r*1.1);
+  g.addColorStop(0,   '#e8c84a');
+  g.addColorStop(0.5, '#b88a18');
+  g.addColorStop(1,   '#5a3c06');
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fillStyle = g;
+  ctx.fill();
 
-const edge = ctx.createRadialGradient(x, y, r*0.6, x, y, r);
-edge.addColorStop(0, ‘rgba(0,0,0,0)’);
-edge.addColorStop(1, ‘rgba(0,0,0,0.4)’);
-ctx.beginPath();
-ctx.arc(x, y, r, 0, Math.PI*2);
-ctx.fillStyle = edge;
-ctx.fill();
+  const edge = ctx.createRadialGradient(x, y, r*0.6, x, y, r);
+  edge.addColorStop(0, 'rgba(0,0,0,0)');
+  edge.addColorStop(1, 'rgba(0,0,0,0.4)');
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fillStyle = edge;
+  ctx.fill();
 
-ctx.beginPath();
-ctx.arc(x-r*0.28, y-r*0.3, r*0.32, 0, Math.PI*2);
-ctx.fillStyle = ‘rgba(255,245,190,0.35)’;
-ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x-r*0.28, y-r*0.3, r*0.32, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,245,190,0.35)';
+  ctx.fill();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RENDER LOOP
 // ─────────────────────────────────────────────────────────────────────────────
 
-function draw(now) {
-ctx.clearRect(0, 0, W, H);
+function draw() {
+  ctx.clearRect(0, 0, W, H);
 
-const { outerAngle, innerAngle } = getAngles();
+  const { outerAngle, innerAngle } = getAngles();
 
-drawBackground();
+  drawBackground();
+  drawDisc(cx, cy, OUTER_R, 14, outerPattern);
+  drawInnerOnOuterShadow();
+  drawDisc(cx, cy, INNER_R, 22, innerPattern);
+  drawAxle();
 
-// Outer disc
-drawDisc(cx, cy, OUTER_R, 14, outerTexture);
-drawInnerOnOuterShadow();
+  const pins = [
+    { x: cx, y: cy, r: PIN_R },
+    {
+      x: cx + Math.cos(START_ANGLE + innerAngle) * (INNER_R * 0.65),
+      y: cy + Math.sin(START_ANGLE + innerAngle) * (INNER_R * 0.65),
+      r: PIN_R
+    },
+    {
+      x: cx + Math.cos(START_ANGLE + outerAngle) * (OUTER_R * 0.72),
+      y: cy + Math.sin(START_ANGLE + outerAngle) * (OUTER_R * 0.72),
+      r: PIN_R
+    }
+  ];
 
-// Inner disc
-drawDisc(cx, cy, INNER_R, 22, innerTexture);
+  drawBandShadow(pins);
 
-drawAxle();
+  // Redraw inner disc so band shadow only falls on outer disc
+  drawDisc(cx, cy, INNER_R, 22, innerPattern);
+  drawAxle();
 
-const pins = [
-{ x: cx, y: cy, r: PIN_R },
-{
-x: cx + Math.cos(START_ANGLE + innerAngle) * (INNER_R * 0.65),
-y: cy + Math.sin(START_ANGLE + innerAngle) * (INNER_R * 0.65),
-r: PIN_R
-},
-{
-x: cx + Math.cos(START_ANGLE + outerAngle) * (OUTER_R * 0.72),
-y: cy + Math.sin(START_ANGLE + outerAngle) * (OUTER_R * 0.72),
-r: PIN_R
-}
-];
+  drawRubberBand(pins);
+  pins.forEach(p => drawPin(p.x, p.y, p.r));
 
-// Band shadow drawn BEFORE the band itself, onto disc surfaces
-drawBandShadow(pins);
-
-// Inner disc redrawn on top of band shadow so shadow only falls on outer disc
-// when band crosses the boundary — the inner disc surface stays clean
-drawDisc(cx, cy, INNER_R, 22, innerTexture);
-drawAxle();
-
-drawRubberBand(pins);
-pins.forEach(p => drawPin(p.x, p.y, p.r));
-
-requestAnimationFrame(draw);
+  requestAnimationFrame(draw);
 }
 
 requestAnimationFrame(draw);
 </script>
-
 </body>
 </html>
