@@ -7,7 +7,7 @@
 <!--
   ╔══════════════════════════════════════════════════════════════╗
   ║  RUBBER BAND CLOCK                                          ║
-  ║  Version 3.0                                                ║
+  ║  Version 3.1                                                ║
   ║                                                             ║
   ║  v1.0 — Initial concept, 2-pin rubber band                  ║
   ║  v1.1 — 3-pin triangle band                                 ║
@@ -448,9 +448,9 @@ function buildBandPath(pins, offsetX, offsetY) {
 function drawBandShadow(pins) {
   const sx = 8, sy = 10;
   ctx.save();
+  // Clip to full outer disc — shadow falls on both outer and inner disc surfaces
   ctx.beginPath();
-  ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2, false);
-  ctx.arc(cx, cy, INNER_R, 0, Math.PI*2, true);
+  ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2);
   ctx.clip();
   buildBandPath(pins, sx*2.2, sy*2.2);
   ctx.lineWidth=22; ctx.strokeStyle=T.bandShadow1; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.stroke();
