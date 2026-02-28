@@ -7,7 +7,7 @@
 <!--
   ╔══════════════════════════════════════════════════════════════╗
   ║  RUBBER BAND CLOCK                                          ║
-  ║  Version 3.1                                                ║
+  ║  Version 3.2                                                ║
   ║                                                             ║
   ║  v1.0 — Initial concept, 2-pin rubber band                  ║
   ║  v1.1 — 3-pin triangle band                                 ║
@@ -18,6 +18,8 @@
   ║  v3.0 — Auto day/night based on Halden sunrise/sunset       ║
   ║          3-second crossfade between themes                  ║
   ║          ?mode=day or ?mode=night to override               ║
+  ║  v3.1 — Diffused single-pass band shadow for daylight       ║
+  ║  v3.2 — Soft multi-pass rim highlights, wider disc halo     ║
   ╚══════════════════════════════════════════════════════════════╝
 -->
 <style>
@@ -156,6 +158,8 @@ const THEMES = {
     innerOnOuterShadow: 'rgba(0,0,0,0.22)',
     axleLit: '#4a4e58', axleMid: '#2a2d35', axleDark: '#14161a',
     bandShadow1: 'rgba(0,0,0,0.12)', bandShadow2: 'rgba(0,0,0,0.20)', bandShadow3: 'rgba(0,0,0,0.22)',
+    bandShadowDiffuse: 'rgba(0,0,0,0.13)',
+    bandShadowCore:    'rgba(0,0,0,0.22)',
     band0: '#7a3a08', band25: '#c45e10', band50: '#b84e0c', band75: '#d4660e', band100: '#8a3a08',
     bandHighlight: 'rgba(255,180,120,0.18)', bandShadowStroke: 'rgba(0,0,0,0.30)',
     pinLit: '#e8c84a', pinMid: '#b88a18', pinDark: '#5a3c06',
@@ -177,6 +181,8 @@ const THEMES = {
     innerOnOuterShadow: 'rgba(50,42,35,0.16)',
     axleLit: '#b8b0a6', axleMid: '#989088', axleDark: '#706860',
     bandShadow1: 'rgba(50,35,20,0.10)', bandShadow2: 'rgba(50,35,20,0.18)', bandShadow3: 'rgba(50,35,20,0.24)',
+    bandShadowDiffuse: 'rgba(50,35,20,0.11)',
+    bandShadowCore:    'rgba(50,35,20,0.22)',
     band0: '#8a3a06', band25: '#d46010', band50: '#c05010', band75: '#e06818', band100: '#923808',
     bandHighlight: 'rgba(255,200,150,0.20)', bandShadowStroke: 'rgba(40,18,0,0.22)',
     pinLit: '#f0d050', pinMid: '#c09020', pinDark: '#6a4808',
@@ -241,6 +247,7 @@ function blendThemes(t) {
     'innerOnOuterShadow',
     'axleLit','axleMid','axleDark',
     'bandShadow1','bandShadow2','bandShadow3',
+    'bandShadowDiffuse','bandShadowCore',
     'band0','band25','band50','band75','band100',
     'bandHighlight','bandShadowStroke',
     'pinLit','pinMid','pinDark','pinHighlight','pinEdgeDark',
@@ -351,27 +358,15 @@ function drawDisc(x, y, r, elevation) {
   ctx.fillRect(x-r, y-r, r*2, r*2);
   ctx.restore();
 
-  const halo = ctx.createRadialGradient(x, y, r-6, x, y, r+5);
-  halo.addColorStop(0,   'rgba(0,0,0,0)');
-  halo.addColorStop(0.5, T.discHaloColor);
-  halo.addColorStop(1,   'rgba(0,0,0,0)');
+  const halo = ctx.createRadialGradient(x, y, r-4, x, y, r+14);
+  halo.addColorStop(0,    'rgba(0,0,0,0)');
+  halo.addColorStop(0.35, T.discHaloColor);
+  halo.addColorStop(1,    'rgba(0,0,0,0)');
   ctx.beginPath();
-  ctx.arc(x, y, r+5, 0, Math.PI*2);
+  ctx.arc(x, y, r+14, 0, Math.PI*2);
   ctx.fillStyle = halo;
   ctx.fill();
 
-  if (T.discRimLight) {
-    ctx.beginPath();
-    ctx.arc(x, y, r-1, Math.PI*0.8, Math.PI*1.9);
-    ctx.strokeStyle = T.discRimLight;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(x, y, r-1, Math.PI*-0.15, Math.PI*0.85);
-    ctx.strokeStyle = T.discRimShadow;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
 }
 
 function drawInnerOnOuterShadow() {
@@ -446,18 +441,36 @@ function buildBandPath(pins, offsetX, offsetY) {
 }
 
 function drawBandShadow(pins) {
-  const sx = 8, sy = 10;
+  const sx = 7, sy = 9;
   ctx.save();
-  // Clip to full outer disc — shadow falls on both outer and inner disc surfaces
   ctx.beginPath();
   ctx.arc(cx, cy, OUTER_R, 0, Math.PI*2);
   ctx.clip();
-  buildBandPath(pins, sx*2.2, sy*2.2);
-  ctx.lineWidth=22; ctx.strokeStyle=T.bandShadow1; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.stroke();
-  buildBandPath(pins, sx*1.5, sy*1.5);
-  ctx.lineWidth=13; ctx.strokeStyle=T.bandShadow2; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.stroke();
-  buildBandPath(pins, sx, sy);
-  ctx.lineWidth=7;  ctx.strokeStyle=T.bandShadow3; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.stroke();
+
+  // Many low-opacity passes at decreasing widths — accumulates into a
+  // true soft gradient with no visible hard edges
+  const passes = [
+    { w: 38, a: 0.045 },
+    { w: 30, a: 0.055 },
+    { w: 22, a: 0.065 },
+    { w: 16, a: 0.065 },
+    { w: 11, a: 0.070 },
+    { w:  7, a: 0.070 },
+    { w:  4, a: 0.060 },
+  ];
+
+  const isDay = T.bandShadowDiffuse.includes('50,35');
+  const rgb = isDay ? '50,35,20' : '0,0,0';
+
+  for (const p of passes) {
+    buildBandPath(pins, sx, sy);
+    ctx.lineWidth = p.w;
+    ctx.strokeStyle = `rgba(${rgb},${p.a})`;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
   ctx.restore();
 }
 
