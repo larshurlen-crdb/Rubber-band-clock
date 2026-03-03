@@ -404,6 +404,20 @@ const pins=[
 drawBandShadow(pins);
 drawRubberBand(pins);
 pins.forEach(p=>drawPin(p.x,p.y,p.r));
+
+// ── DIAGNOSTIC OVERLAY — remove before final deploy ──
+ctx.fillStyle = 'rgba(0,0,0,0.65)';
+ctx.fillRect(20, 20, 700, 200);
+ctx.fillStyle = '#fff';
+ctx.font = '28px monospace';
+ctx.textAlign = 'left';
+ctx.fillText('blend: ' + currentBlend.toFixed(3), 40, 60);
+ctx.fillText('oslo h:m ' + oslo.getHours() + ':' + oslo.getMinutes(), 40, 100);
+ctx.fillText('pin0: ' + Math.round(pins[0].x) + ',' + Math.round(pins[0].y), 40, 140);
+ctx.fillText('pin1: ' + Math.round(pins[1].x) + ',' + Math.round(pins[1].y), 40, 180);
+ctx.fillText('outerA: ' + outerAngle.toFixed(3), 400, 60);
+ctx.fillText('T.panelColor: ' + T.panelColor, 400, 100);
+ctx.fillText('T.band25: ' + T.band25, 400, 140);
 ```
 
 } catch(e) {
