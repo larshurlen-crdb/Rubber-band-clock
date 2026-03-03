@@ -200,6 +200,7 @@ return B;
 }
 
 let T = THEMES.day;
+let currentBlend = 0;
 
 // ─── TIME ────────────────────────────────────────────────────────────────────
 
@@ -320,8 +321,8 @@ ctx.closePath();
 function drawBandShadow(pins) {
 const sx=7, sy=9;
 ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,OUTER_R,0,Math.PI*2); ctx.clip();
-const isDay = T.bandShadowDiffuse.includes(‘60,35’);
-const rgb = isDay ? ‘60,35,8’ : ‘0,0,0’;
+// Interpolate shadow color between warm day and neutral night
+const rgb = `${Math.round(60*(1-currentBlend))},${Math.round(35*(1-currentBlend))},${Math.round(8*(1-currentBlend))}`;
 const passes=[{w:38,a:0.045},{w:30,a:0.055},{w:22,a:0.065},{w:16,a:0.065},{w:11,a:0.070},{w:7,a:0.070},{w:4,a:0.060}];
 for(const p of passes){
 buildBandPath(pins,sx,sy);
@@ -365,30 +366,35 @@ lastFrame=timestamp;
 
 const oslo=getOsloDate();
 
-let blend;
-if      (urlMode === ‘day’)   blend = 0;
-else if (urlMode === ‘night’) blend = 1;
-else                          blend = getDayNightBlend(oslo);
+if      (urlMode === ‘day’)   currentBlend = 0;
+else if (urlMode === ‘night’) currentBlend = 1;
+else                          currentBlend = getDayNightBlend(oslo);
 
-T = blend<=0 ? THEMES.day : blend>=1 ? THEMES.night : blendThemes(blend);
+T = currentBlend<=0 ? THEMES.day : currentBlend>=1 ? THEMES.night : blendThemes(currentBlend);
 
 const {outerAngle,innerAngle}=getAngles(oslo);
 
+try {
 drawBackground();
 drawDisc(cx, cy, OUTER_R, 14);
 drawInnerOnOuterShadow();
 drawDisc(cx, cy, INNER_R, 22, T.innerDiscLit, T.innerDiscMid, T.innerDiscShadow);
 drawAxle();
 
+```
 const pins=[
-{x:cx,y:cy,r:PIN_R},
-{x:cx+Math.cos(START_ANGLE+innerAngle)*(INNER_R*0.65),y:cy+Math.sin(START_ANGLE+innerAngle)*(INNER_R*0.65),r:PIN_R},
-{x:cx+Math.cos(START_ANGLE+outerAngle)*(OUTER_R*0.72),y:cy+Math.sin(START_ANGLE+outerAngle)*(OUTER_R*0.72),r:PIN_R},
+  {x:cx,y:cy,r:PIN_R},
+  {x:cx+Math.cos(START_ANGLE+innerAngle)*(INNER_R*0.65),y:cy+Math.sin(START_ANGLE+innerAngle)*(INNER_R*0.65),r:PIN_R},
+  {x:cx+Math.cos(START_ANGLE+outerAngle)*(OUTER_R*0.72),y:cy+Math.sin(START_ANGLE+outerAngle)*(OUTER_R*0.72),r:PIN_R},
 ];
-
 drawBandShadow(pins);
 drawRubberBand(pins);
 pins.forEach(p=>drawPin(p.x,p.y,p.r));
+```
+
+} catch(e) {
+// Silently continue on Frame TV rendering errors
+}
 }
 
 requestAnimationFrame(draw);
