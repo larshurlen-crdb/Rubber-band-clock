@@ -206,13 +206,27 @@ let currentBlend = 0;
 
 function getOsloDate() {
 const now = new Date();
-if (demoMode) {
+const base = demoMode ? (() => {
 const elapsed = (Date.now() - demoStart) * DEMO_SPEED;
-const midnight = new Date(now.toLocaleString(‘en-US’, { timeZone: ‘Europe/Oslo’ }));
-midnight.setHours(0, 0, 0, 0);
+const fmt = new Intl.DateTimeFormat(‘en-CA’, {
+timeZone: ‘Europe/Oslo’,
+year:‘numeric’, month:‘2-digit’, day:‘2-digit’,
+hour:‘2-digit’, minute:‘2-digit’, second:‘2-digit’, hour12: false
+});
+const parts = Object.fromEntries(fmt.formatToParts(now).map(p => [p.type, p.value]));
+const midnight = new Date(Date.UTC(+parts.year, +parts.month-1, +parts.day));
+const tzOffset = now.getTime() - midnight.getTime() - (new Date(Date.UTC(+parts.year,+parts.month-1,+parts.day,+parts.hour,+parts.minute,+parts.second)) - midnight);
 return new Date(midnight.getTime() + elapsed);
-}
-return new Date(now.toLocaleString(‘en-US’, { timeZone: ‘Europe/Oslo’ }));
+})() : null;
+
+const target = base || now;
+const fmt = new Intl.DateTimeFormat(‘en-CA’, {
+timeZone: ‘Europe/Oslo’,
+year:‘numeric’, month:‘2-digit’, day:‘2-digit’,
+hour:‘2-digit’, minute:‘2-digit’, second:‘2-digit’, hour12: false
+});
+const parts = Object.fromEntries(fmt.formatToParts(target).map(p => [p.type, p.value]));
+return new Date(+parts.year, +parts.month-1, +parts.day, +parts.hour, +parts.minute, +parts.second);
 }
 
 function getAngles(oslo) {
@@ -393,7 +407,13 @@ pins.forEach(p=>drawPin(p.x,p.y,p.r));
 ```
 
 } catch(e) {
-// Silently continue on Frame TV rendering errors
+// Show error on canvas for debugging
+ctx.fillStyle = ‘rgba(255,0,0,0.7)’;
+ctx.fillRect(40, 40, W-80, 80);
+ctx.fillStyle = ‘#fff’;
+ctx.font = ‘bold 32px monospace’;
+ctx.textAlign = ‘left’;
+ctx.fillText(’ERR: ’ + e.message, 60, 92);
 }
 }
 
